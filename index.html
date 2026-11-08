@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gastos de Eletricidade</title>
+  <meta name="description" content="Gestão dos gastos de eletricidade da casa a partir dos dados do Balcão Digital da E-Redes.">
+  <meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Eletricidade">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topo">
+    <h1>Eletricidade</h1>
+    <div class="navper" id="navper" hidden>
+      <button class="icon" id="perAnt" aria-label="Período anterior">‹</button>
+      <div class="perlabel">
+        <span class="muted small">Período de faturação</span>
+        <strong id="perRotulo">–</strong>
+      </div>
+      <button class="icon" id="perSeg" aria-label="Período seguinte">›</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="resumo" aria-selected="true">Resumo</button>
+    <button role="tab" data-tab="comparar">Comparar</button>
+    <button role="tab" data-tab="horas">Horas do dia</button>
+    <button role="tab" data-tab="dados">Dados</button>
+  </nav>
+
+  <main>
+    <!-- Estado vazio -->
+    <section id="vazio" class="cartao vazio" hidden>
+      <h2>Comece por importar os seus consumos</h2>
+      <p>Exporte o ficheiro Excel dos consumos no Balcão Digital da E-Redes e importe-o aqui. Os dados ficam guardados apenas neste dispositivo.</p>
+      <button class="primario" data-ir="dados">Importar ficheiro</button>
+    </section>
+
+    <!-- RESUMO -->
+    <section data-painel="resumo">
+      <div class="kpis">
+        <div class="cartao kpi">
+          <span class="rot">Consumo</span>
+          <span class="val" id="kTotal">–</span>
+          <span class="delta" id="kTotalDelta"></span>
+        </div>
+        <div class="cartao kpi">
+          <span class="rot">Custo estimado</span>
+          <span class="val" id="kCusto">–</span>
+          <span class="delta" id="kCustoDelta"></span>
+        </div>
+        <div class="cartao kpi">
+          <span class="rot">Média por dia</span>
+          <span class="val" id="kMedia">–</span>
+          <span class="delta" id="kMediaSub"></span>
+        </div>
+        <div class="cartao kpi">
+          <span class="rot">Pico de 15 min</span>
+          <span class="val" id="kPico">–</span>
+          <span class="delta" id="kPicoSub"></span>
+        </div>
+      </div>
+      <p class="aviso" id="avisoCobertura" hidden></p>
+
+      <div class="grade2">
+        <div class="cartao">
+          <h3>Consumo por dia</h3>
+          <p class="sub" id="subDia"></p>
+          <div class="grafico alto"><canvas id="gDia" aria-label="Consumo por dia"></canvas></div>
+        </div>
+        <div class="cartao">
+          <h3>Por período tarifário</h3>
+          <p class="sub" id="subTarifa"></p>
+          <div id="barrasTarifa" class="barras-tarifa"></div>
+          <table class="tabela" id="tabTarifa"></table>
+          <div id="custoDetalhe" class="custo-detalhe"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARAR -->
+    <section data-painel="comparar" hidden>
+      <div class="cartao">
+        <div class="cab-linha">
+          <div>
+            <h3>Consumo por período de faturação</h3>
+            <p class="sub">Cada barra vai do dia 16 ao dia 15 do mês seguinte.</p>
+          </div>
+          <div class="seg" id="segMedida">
+            <button data-medida="kwh" aria-pressed="true">kWh</button>
+            <button data-medida="eur">€</button>
+          </div>
+        </div>
+        <div class="grafico alto"><canvas id="gMeses" aria-label="Comparação de períodos"></canvas></div>
+      </div>
+      <div class="grade2">
+        <div class="cartao">
+          <h3>Este período vs. anterior, dia a dia</h3>
+          <p class="sub">Consumo acumulado ao longo do período.</p>
+          <div class="grafico"><canvas id="gAcum" aria-label="Consumo acumulado"></canvas></div>
+        </div>
+        <div class="cartao">
+          <h3>Tabela</h3>
+          <div class="tabela-scroll"><table class="tabela" id="tabMeses"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HORAS -->
+    <section data-painel="horas" hidden>
+      <div class="cartao">
+        <div class="cab-linha">
+          <div>
+            <h3>Perfil médio por hora</h3>
+            <p class="sub">Consumo médio em cada hora do dia, neste período e no anterior.</p>
+          </div>
+          <div class="seg" id="segDias">
+            <button data-dias="todos" aria-pressed="true">Todos</button>
+            <button data-dias="uteis">Dias úteis</button>
+            <button data-dias="fds">Fim de semana</button>
+          </div>
+        </div>
+        <div class="grafico"><canvas id="gHora" aria-label="Perfil médio por hora"></canvas></div>
+        <div class="destaques" id="destaquesHora"></div>
+      </div>
+      <div class="cartao">
+        <h3>Mapa de calor: dia × hora</h3>
+        <p class="sub">Quanto mais intensa a cor, maior o consumo nessa hora. Toque numa célula para ver o valor.</p>
+        <div id="mapa" class="mapa"></div>
+        <div class="legenda-mapa" id="legMapa"></div>
+      </div>
+      <div class="cartao">
+        <h3>Momentos de maior consumo</h3>
+        <p class="sub">Os 10 quartos de hora com mais consumo neste período.</p>
+        <table class="tabela" id="tabPicos"></table>
+      </div>
+    </section>
+
+    <!-- DADOS -->
+    <section data-painel="dados" hidden>
+      <div class="cartao">
+        <h3>Importar consumos da E-Redes</h3>
+        <ol class="passos">
+          <li>No Safari, entre no <strong>Balcão Digital da E-Redes</strong> (balcaodigital.e-redes.pt).</li>
+          <li>Abra <em>Consumos</em> → escolha o seu local (CPE) → vista de <strong>15 minutos</strong> (diagrama de carga) e o intervalo de datas.</li>
+          <li>Toque em <em>Exportar</em> / <em>Descarregar Excel</em>. O ficheiro fica em <em>Ficheiros → Transferências</em>.</li>
+          <li>Volte aqui e importe-o. Pode importar vários ficheiros: as leituras repetidas são substituídas.</li>
+        </ol>
+        <label class="primario ficheiro">
+          Escolher ficheiro (.xlsx, .xls, .csv)
+          <input type="file" id="inFicheiro" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" multiple>
+        </label>
+        <div id="resultadoImport" class="resultado" aria-live="polite"></div>
+        <p class="sub" id="infoDados"></p>
+      </div>
+
+      <div class="cartao">
+        <h3>Tarifa</h3>
+        <p class="sub">Use os preços da sua fatura, com IVA e taxas incluídos, para a estimativa ficar próxima do valor real.</p>
+        <form id="fTarifa" class="form">
+          <label>Tipo de tarifa
+            <select name="tipo">
+              <option value="simples">Simples</option>
+              <option value="bihorario">Bi-horária</option>
+              <option value="trihorario">Tri-horária</option>
+            </select>
+          </label>
+          <label data-mostrar="bihorario trihorario">Ciclo
+            <select name="ciclo">
+              <option value="diario">Diário</option>
+              <option value="semanal" data-so="bihorario">Semanal</option>
+            </select>
+          </label>
+          <label data-mostrar="simples">Preço da energia (€/kWh)
+            <input name="p_simples" type="number" step="0.0001" min="0" inputmode="decimal">
+          </label>
+          <label data-mostrar="bihorario trihorario">Vazio (€/kWh)
+            <input name="p_vazio" type="number" step="0.0001" min="0" inputmode="decimal">
+          </label>
+          <label data-mostrar="bihorario">Fora de vazio (€/kWh)
+            <input name="p_foraVazio" type="number" step="0.0001" min="0" inputmode="decimal">
+          </label>
+          <label data-mostrar="trihorario">Cheias (€/kWh)
+            <input name="p_cheias" type="number" step="0.0001" min="0" inputmode="decimal">
+          </label>
+          <label data-mostrar="trihorario">Ponta (€/kWh)
+            <input name="p_ponta" type="number" step="0.0001" min="0" inputmode="decimal">
+          </label>
+          <label>Potência contratada (€/dia)
+            <input name="potenciaDia" type="number" step="0.0001" min="0" inputmode="decimal">
+          </label>
+          <label>Outros custos fixos (€/mês)
+            <input name="outrosMes" type="number" step="0.01" min="0" inputmode="decimal">
+            <span class="ajuda">Ex.: contribuição audiovisual, taxa DGEG.</span>
+          </label>
+          <label>O período de faturação começa no dia
+            <input name="diaInicio" type="number" min="1" max="28" step="1" inputmode="numeric">
+          </label>
+          <label class="check">
+            <input name="horaMarcaFim" type="checkbox">
+            A hora no ficheiro marca o fim de cada quarto de hora (ex.: 00:15 = consumo das 00:00 às 00:15)
+          </label>
+          <p class="guardado" id="tarifaGuardada" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <div class="cartao">
+        <h3>Cópia de segurança</h3>
+        <p class="sub">Os dados vivem só neste dispositivo. Guarde uma cópia de vez em quando (por exemplo no iCloud Drive).</p>
+        <div class="botoes">
+          <button id="btExportar">Exportar cópia (.json)</button>
+          <label class="botao ficheiro">Restaurar cópia
+            <input type="file" id="inBackup" accept=".json,application/json">
+          </label>
+          <button id="btApagar" class="perigo">Apagar todos os dados</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="dica" class="dica" role="tooltip" hidden></div>
+
+  <script src="vendor/chart.umd.js"></script>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

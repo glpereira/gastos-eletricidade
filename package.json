@@ -1,0 +1,10 @@
+{
+  "name": "gastos-eletricidade",
+  "private": true,
+  "type": "module",
+  "description": "Gestão dos gastos de eletricidade a partir dos dados da E-Redes",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "start": "python3 -m http.server 8080"
+  }
+}
